@@ -1,10 +1,11 @@
 extern crate fixedbitset;
 extern crate js_sys;
+extern crate web_sys;
 
 mod utils;
 
 use fixedbitset::FixedBitSet;
-// use std::fmt;
+use std::fmt;
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -13,22 +14,10 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-// Import console.log() from JS
-#[wasm_bindgen]
-extern "C" {
-    // Use `js_namespace` here to bind `console.log(..)` instead of just
-    // `log(..)`
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-
-    // The `console.log` is quite polymorphic, so we can bind it with multiple
-    // signatures. Note that we need to use `js_name` to ensure we always call
-    // `log` in JS.
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_u32(a: u32);
-
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_many(a: &str, b: &str);
+macro_rules! log {
+    ( $( $t:tt )* ) => {
+        web_sys::console::log_1(&format!( $( $t )* ).into());
+    }
 }
 
 #[wasm_bindgen]
@@ -63,7 +52,44 @@ impl Universe {
 
 #[wasm_bindgen]
 impl Universe {
+    pub fn new(init_mode: &str, threshold: f64) -> Universe {
+        utils::set_panic_hook(); // Enable better error messages if panic
+                                 // panic!("AYAA");
+
+        let width = 64;
+        let height = 64;
+
+        let size = (width * height) as usize;
+        let mut cells = FixedBitSet::with_capacity(size);
+
+        match (init_mode, threshold) {
+            ("random", threshold) => {
+                log!("Generated random world with threshold {}", threshold);
+                for i in 0..size {
+                    if js_sys::Math::random() < threshold {
+                        cells.set(i, false);
+                    } else {
+                        cells.set(i, true);
+                    }
+                }
+            }
+            _ => {
+                log!("Generated default world");
+                for i in 0..size {
+                    cells.set(i, i % 2 == 0 || i % 7 == 0);
+                }
+            }
+        }
+
+        Universe {
+            width,
+            height,
+            cells,
+        }
+    }
+
     pub fn tick(&mut self) {
+        // Have to use clone so state doesn't change from cell to cell
         let mut next = self.cells.clone();
 
         for row in 0..self.height {
@@ -88,41 +114,6 @@ impl Universe {
         self.cells = next;
     }
 
-    pub fn new(init_mode: &str, threshold: f64) -> Universe {
-        let width = 64;
-        let height = 64;
-
-        let size = (width * height) as usize;
-        let mut cells = FixedBitSet::with_capacity(size);
-
-        match (init_mode, threshold) {
-            ("random", threshold) => {
-                let log_msg = format!("Generated random world with threshold {}", threshold);
-                log(&log_msg);
-                for i in 0..size {
-                    if js_sys::Math::random() < threshold {
-                        cells.set(i, false);
-                    } else {
-                        cells.set(i, true);
-                    }
-                }
-            }
-            _ => {
-                let log_msg = format!("Generated default world");
-                log(&log_msg);
-                for i in 0..size {
-                    cells.set(i, i % 2 == 0 || i % 7 == 0);
-                }
-            }
-        }
-
-        Universe {
-            width,
-            height,
-            cells,
-        }
-    }
-
     pub fn width(&self) -> u32 {
         self.width
     }
@@ -131,14 +122,30 @@ impl Universe {
         self.height
     }
 
+    pub fn set_width(&mut self, width: u32) {
+        self.width = width;
+        self.cells.grow((width * self.height) as usize);
+    }
+
+    pub fn set_height(&mut self, height: u32) {
+        self.height = height;
+        self.cells.grow((height * self.width) as usize);
+    }
+
     pub fn cells(&self) -> *const u32 {
         self.cells.as_slice().as_ptr()
     }
 
+    pub fn toggle_cell(&mut self, row: u32, col: u32) {
+        let idx = self.get_index(row, col);
+        self.cells
+            .set(idx, if self.cells[idx] { false } else { true });
+    }
+
     pub fn add_glider(&mut self) {
-        log("Glider coming through!");
-        let random_offset: usize = (js_sys::Math::random() * 40.0) as usize;
-        log_u32(random_offset as u32);
+        let random_offset: usize = (js_sys::Math::random() * 60.0) as usize;
+        log!("Glider with offset {} coming through!", random_offset);
+
         // Set all cells to dead first
         for row in 0..5 {
             for col in 0..5 {

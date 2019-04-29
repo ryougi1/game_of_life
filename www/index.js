@@ -19,12 +19,13 @@ canvas.width = (CELL_SIZE + 1) * width + 1;
 
 const ctx = canvas.getContext('2d');
 
+let animationId = null;
 var renderLoop = () => {
     universe.tick();
 
     drawGrid();
     drawCells();
-    requestAnimationFrame(renderLoop);
+    animationId = requestAnimationFrame(renderLoop);
 };
 
 const drawGrid = () => {
@@ -89,7 +90,7 @@ document.getElementById('btn').addEventListener('click', (clicked_button) => {
     drawCells();
 });
 
-document.addEventListener('keyup', (event) => {
+document.addEventListener('keydown', (event) => {
     switch (event.key) {
         case 'q':
             universe.add_glider();
@@ -97,6 +98,37 @@ document.addEventListener('keyup', (event) => {
         default:
             break;
     }
+});
+
+const playPauseButton = document.getElementById("play-pause");
+playPauseButton.addEventListener("click", event => {
+    if (animationId === null) {
+        playPauseButton.textContent = "⏸";
+        renderLoop();
+    } else {
+        playPauseButton.textContent = "▶";
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    }
+});
+
+canvas.addEventListener("click", event => {
+    console.log("TOGGLE CELL PLS");
+    const boundingRect = canvas.getBoundingClientRect();
+
+    const scaleX = canvas.width / boundingRect.width;
+    const scaleY = canvas.height / boundingRect.height;
+
+    const canvasLeft = (event.clientX - boundingRect.left) * scaleX;
+    const canvasTop = (event.clientY - boundingRect.top) * scaleY;
+
+    const row = Math.min(Math.floor(canvasTop / (CELL_SIZE + 1)), height - 1);
+    const col = Math.min(Math.floor(canvasLeft / (CELL_SIZE + 1)), width - 1);
+
+    universe.toggle_cell(row, col);
+
+    drawGrid();
+    drawCells();
 });
 
 drawGrid();
