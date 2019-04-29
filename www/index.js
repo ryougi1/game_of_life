@@ -20,8 +20,11 @@ canvas.width = (CELL_SIZE + 1) * width + 1;
 const ctx = canvas.getContext('2d');
 
 let animationId = null;
+let nrTicksPerRender = 1;
 var renderLoop = () => {
-    universe.tick();
+    for (let i = 0; i < nrTicksPerRender; i++) {
+        universe.tick();
+    }
 
     drawGrid();
     drawCells();
@@ -84,7 +87,7 @@ const drawCells = () => {
 };
 
 
-document.getElementById('btn').addEventListener('click', (clicked_button) => {
+document.getElementById('btn').addEventListener('click', () => {
     let threshold = document.getElementById('threshold_input').value;
     universe = Universe.new("random", threshold);
     drawCells();
@@ -101,7 +104,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 const playPauseButton = document.getElementById("play-pause");
-playPauseButton.addEventListener("click", event => {
+playPauseButton.addEventListener("click", () => {
     if (animationId === null) {
         playPauseButton.textContent = "⏸";
         renderLoop();
@@ -113,7 +116,6 @@ playPauseButton.addEventListener("click", event => {
 });
 
 canvas.addEventListener("click", event => {
-    console.log("TOGGLE CELL PLS");
     const boundingRect = canvas.getBoundingClientRect();
 
     const scaleX = canvas.width / boundingRect.width;
@@ -125,10 +127,23 @@ canvas.addEventListener("click", event => {
     const row = Math.min(Math.floor(canvasTop / (CELL_SIZE + 1)), height - 1);
     const col = Math.min(Math.floor(canvasLeft / (CELL_SIZE + 1)), width - 1);
 
-    universe.toggle_cell(row, col);
+    if (event.ctrlKey) {
+        console.log("SPAWN GLIDER PLS: (", row, ", ", col, ")");
+    } else {
+        // console.log("TOGGLE CELL PLS: (", row, ", ", col, ")");
+        universe.toggle_cell(row, col);
+    }
 
     drawGrid();
     drawCells();
+});
+
+const rangeWidget = document.getElementById("ticks_per_render");
+const rangeWidgetOutput = document.querySelector("output")
+rangeWidget.addEventListener("click", () => {
+    const value = rangeWidget.value;
+    rangeWidgetOutput.innerHTML = value;
+    nrTicksPerRender = value;
 });
 
 drawGrid();
