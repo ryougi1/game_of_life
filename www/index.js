@@ -1,6 +1,5 @@
-import { Universe, Cell } from "game-of-life";
+import { Universe } from "game-of-life";
 import { memory } from "game-of-life/game_of_life_bg"; // Import the WebAssembly memory at the top of the file.
-
 
 const CELL_SIZE = 8; // px
 const GRID_COLOR = "#CCCCCC";
@@ -8,7 +7,7 @@ const DEAD_COLOR = "#FFFFFF";
 const ALIVE_COLOR = "#000000";
 
 // Construct the universe, and get its width and height.
-const universe = Universe.new();
+let universe = Universe.new();
 const width = universe.width();
 const height = universe.height();
 
@@ -20,12 +19,11 @@ canvas.width = (CELL_SIZE + 1) * width + 1;
 
 const ctx = canvas.getContext('2d');
 
-const renderLoop = () => {
+var renderLoop = () => {
     universe.tick();
 
     drawGrid();
     drawCells();
-
     requestAnimationFrame(renderLoop);
 };
 
@@ -69,8 +67,8 @@ const drawCells = () => {
             const idx = getIndex(row, col);
 
             ctx.fillStyle = bitIsSet(idx, cells)
-                ? DEAD_COLOR
-                : ALIVE_COLOR;
+                ? ALIVE_COLOR
+                : DEAD_COLOR;
 
             ctx.fillRect(
                 col * (CELL_SIZE + 1) + 1,
@@ -83,6 +81,23 @@ const drawCells = () => {
 
     ctx.stroke();
 };
+
+
+document.getElementById('btn').addEventListener('click', (clicked_button) => {
+    let threshold = document.getElementById('threshold_input').value;
+    universe = Universe.new("random", threshold);
+    drawCells();
+});
+
+document.addEventListener('keyup', (event) => {
+    switch (event.key) {
+        case 'q':
+            universe.add_glider();
+            break;
+        default:
+            break;
+    }
+});
 
 drawGrid();
 drawCells();
