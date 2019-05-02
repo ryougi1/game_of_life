@@ -28,8 +28,16 @@
   <button id="play-pause">⏸</button>
 
   <b>Set #Ticks per Render</b>
-  <input id="ticks_per_render" type="range" min="1" max="50" value="1" step="1">
-  <output>1</output>
+  <input oninput="updateTicks()" id="ticks_per_render" type="range" min="1" max="50" value="1" step="1">
+  <p>Value: <span id="output"></span></p>
+  <script>
+    // Look into moving into JS
+    document.getElementById("output").innerHTML = 1;
+    function updateTicks() {
+      document.getElementById("output").innerHTML = document.getElementById("ticks_per_render").value;
+    }
+  </script>
+
   <script src="./bootstrap.js"></script>
 </body>
 

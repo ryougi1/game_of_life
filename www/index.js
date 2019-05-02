@@ -129,6 +129,7 @@ canvas.addEventListener("click", event => {
 
     if (event.ctrlKey) {
         console.log("SPAWN GLIDER PLS: (", row, ", ", col, ")");
+        universe.add_glider_at(row, col);
     } else {
         // console.log("TOGGLE CELL PLS: (", row, ", ", col, ")");
         universe.toggle_cell(row, col);
@@ -139,11 +140,8 @@ canvas.addEventListener("click", event => {
 });
 
 const rangeWidget = document.getElementById("ticks_per_render");
-const rangeWidgetOutput = document.querySelector("output")
 rangeWidget.addEventListener("click", () => {
-    const value = rangeWidget.value;
-    rangeWidgetOutput.innerHTML = value;
-    nrTicksPerRender = value;
+    nrTicksPerRender = rangeWidget.value;
 });
 
 drawGrid();

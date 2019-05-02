@@ -142,6 +142,24 @@ impl Universe {
             .set(idx, if self.cells[idx] { false } else { true });
     }
 
+    pub fn add_glider_at(&mut self, row: u32, col: u32) {
+        // Set all cells to dead first
+        for row in row - 1..row + 2 {
+            for col in col - 1..col + 2 {
+                self.cells.set((row * self.width + col) as usize, false);
+            }
+        }
+
+        // Manually set the live cells
+        for col in col - 1..col + 2 {
+            self.cells.set((row * self.width + col) as usize, true);
+        }
+        self.cells
+            .set(((row + 1) * self.width + col - 1) as usize, true);
+        self.cells
+            .set(((row + 2) * self.width + col) as usize, true);
+    }
+
     pub fn add_glider(&mut self) {
         let random_offset: usize = (js_sys::Math::random() * 60.0) as usize;
         log!("Glider with offset {} coming through!", random_offset);
@@ -150,18 +168,18 @@ impl Universe {
         for row in 0..5 {
             for col in 0..5 {
                 self.cells
-                    .set(row * self.width() as usize + (col + random_offset), false); // First row
+                    .set(row * self.width as usize + (col + random_offset), false);
             }
         }
 
         // Manually set the live cells
         self.cells
-            .set(self.width() as usize + (2 + random_offset), true);
+            .set(self.width as usize + (2 + random_offset), true);
         self.cells
-            .set(self.width() as usize * 2 + (3 + random_offset), true);
+            .set(self.width as usize * 2 + (3 + random_offset), true);
         for col in 1..4 {
             self.cells
-                .set(self.width() as usize * 3 + (col + random_offset), true);
+                .set(self.width as usize * 3 + (col + random_offset), true);
         }
     }
 }
