@@ -5,7 +5,7 @@ authors = ["ryougi1 <shplankey@live.se>"]
 edition = "2018"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib", "rlib"] 
 
 [features]
 default = ["console_error_panic_hook"]
@@ -41,4 +41,17 @@ features = [
 
 [profile.release]
 # Tell `rustc` to optimize for small code size.
-opt-level = "s"
+# opt-level = "s"
+# More aggressively optimize for size, results not consistent vs "s"
+# opt-level = 'z'
+# Give LLVM more opportunities to optimize. Smaller .wasm and also faster runtime. Slower compilation. 
+lto = true
+
+# Using the wasm-opt tool
+# Different settings are: 
+# Optimize for size:
+# wasm-opt -Os -o output.wasm input.wasm
+# wasm-opt -Oz -o output.wasm input.wasm
+# Optimize for speed:
+# wasm-opt -O -o output.wasm input.wasm
+# wasm-opt -O3 -o output.wasm input.wasm

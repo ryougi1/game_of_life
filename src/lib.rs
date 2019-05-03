@@ -7,6 +7,7 @@ mod utils;
 use fixedbitset::FixedBitSet;
 use std::fmt;
 use wasm_bindgen::prelude::*;
+use web_sys::console;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -14,9 +15,27 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
+// For JS console log
 macro_rules! log {
     ( $( $t:tt )* ) => {
         web_sys::console::log_1(&format!( $( $t )* ).into());
+    }
+}
+
+pub struct Timer<'a> {
+    name: &'a str,
+}
+
+impl<'a> Timer<'a> {
+    pub fn new(name: &'a str) -> Timer<'a> {
+        console::time_with_label(name);
+        Timer { name }
+    }
+}
+
+impl<'a> Drop for Timer<'a> {
+    fn drop(&mut self) {
+        console::time_end_with_label(self.name);
     }
 }
 
@@ -34,18 +53,52 @@ impl Universe {
 
     fn live_neighbor_count(&self, row: u32, column: u32) -> u8 {
         let mut count = 0;
-        for delta_row in [self.height - 1, 0, 1].iter().cloned() {
-            for delta_col in [self.width - 1, 0, 1].iter().cloned() {
-                if delta_row == 0 && delta_col == 0 {
-                    continue;
-                }
 
-                let neighbor_row = (row + delta_row) % self.height;
-                let neighbor_col = (column + delta_col) % self.width;
-                let idx = self.get_index(neighbor_row, neighbor_col);
-                count += self.cells[idx] as u8;
-            }
-        }
+        //     for delta_row in [self.height - 1, 0, 1].iter().cloned() {
+        //         for delta_col in [self.width - 1, 0, 1].iter().cloned() {
+        //             if delta_row == 0 && delta_col == 0 {
+        //                 continue;
+        //             }
+
+        //             let neighbor_row = (row + delta_row) % self.height;
+        //             let neighbor_col = (column + delta_col) % self.width;
+        //             let idx = self.get_index(neighbor_row, neighbor_col);
+        //             count += self.cells[idx] as u8;
+        //         }
+        //     }
+        //     count
+
+        // Optimization: Use modulo as little as possible, allow CPU to predict branches better
+        let north = if row == 0 { self.height - 1 } else { row - 1 };
+        let south = if row == self.height - 1 { 0 } else { row + 1 };
+        let west = if column == 0 {
+            self.width - 1
+        } else {
+            column - 1
+        };
+        let east = if column == self.width - 1 {
+            0
+        } else {
+            column + 1
+        };
+
+        let nw = self.get_index(north, west);
+        count += self.cells[nw] as u8;
+        let n = self.get_index(north, column);
+        count += self.cells[n] as u8;
+        let ne = self.get_index(north, east);
+        count += self.cells[ne] as u8;
+        let w = self.get_index(row, west);
+        count += self.cells[w] as u8;
+        let e = self.get_index(row, east);
+        count += self.cells[e] as u8;
+        let sw = self.get_index(south, west);
+        count += self.cells[sw] as u8;
+        let s = self.get_index(south, column);
+        count += self.cells[s] as u8;
+        let se = self.get_index(south, east);
+        count += self.cells[se] as u8;
+
         count
     }
 }
@@ -56,8 +109,10 @@ impl Universe {
         utils::set_panic_hook(); // Enable better error messages if panic
                                  // panic!("AYAA");
 
-        let width = 64;
-        let height = 64;
+        // let width = 64;
+        // let height = 64;
+        let width = 128;
+        let height = 128;
 
         let size = (width * height) as usize;
         let mut cells = FixedBitSet::with_capacity(size);
@@ -90,27 +145,36 @@ impl Universe {
 
     pub fn tick(&mut self) {
         // Have to use clone so state doesn't change from cell to cell
-        let mut next = self.cells.clone();
+        let mut next = {
+            let _timer = Timer::new("Allocating new cells");
+            self.cells.clone()
+        };
 
-        for row in 0..self.height {
-            for col in 0..self.width {
-                let idx = self.get_index(row, col);
-                let cell = self.cells[idx];
-                let live_neighbors = self.live_neighbor_count(row, col);
+        // From the timer outputs in console, this part is almost full contributor
+        // of all the time spent inside tick method
+        {
+            let _timer = Timer::new("New generation");
+            for row in 0..self.height {
+                for col in 0..self.width {
+                    let idx = self.get_index(row, col);
+                    let cell = self.cells[idx];
+                    let live_neighbors = self.live_neighbor_count(row, col);
 
-                next.set(
-                    idx,
-                    match (cell, live_neighbors) {
-                        (true, x) if x < 2 => false,
-                        (true, 3) => true,
-                        (true, x) if x > 3 => false,
-                        (false, 3) => true,
-                        (otherwise, _) => otherwise,
-                    },
-                );
+                    next.set(
+                        idx,
+                        match (cell, live_neighbors) {
+                            (true, x) if x < 2 => false,
+                            (true, 3) => true,
+                            (true, x) if x > 3 => false,
+                            (false, 3) => true,
+                            (otherwise, _) => otherwise,
+                        },
+                    );
+                }
             }
         }
 
+        let _timer = Timer::new("Freeing old cells");
         self.cells = next;
     }
 
@@ -161,7 +225,7 @@ impl Universe {
     }
 
     pub fn add_glider(&mut self) {
-        let random_offset: usize = (js_sys::Math::random() * 60.0) as usize;
+        let random_offset: usize = (js_sys::Math::random() * self.width as f64) as usize;
         log!("Glider with offset {} coming through!", random_offset);
 
         // Set all cells to dead first
