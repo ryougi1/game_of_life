@@ -109,10 +109,10 @@ impl Universe {
         utils::set_panic_hook(); // Enable better error messages if panic
                                  // panic!("AYAA");
 
-        // let width = 64;
-        // let height = 64;
-        let width = 128;
-        let height = 128;
+        let width = 64;
+        let height = 64;
+        // let width = 128;
+        // let height = 128;
 
         let size = (width * height) as usize;
         let mut cells = FixedBitSet::with_capacity(size);
